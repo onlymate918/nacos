@@ -34,52 +34,56 @@ import java.util.concurrent.TimeUnit;
  * @author nkorange
  */
 public class ClientBeatProcessor implements Runnable {
-    
+
     public static final long CLIENT_BEAT_TIMEOUT = TimeUnit.SECONDS.toMillis(15);
-    
+
     private RsInfo rsInfo;
-    
+
     private Service service;
-    
+
     @JsonIgnore
     public PushService getPushService() {
         return ApplicationUtils.getBean(PushService.class);
     }
-    
+
     public RsInfo getRsInfo() {
         return rsInfo;
     }
-    
+
     public void setRsInfo(RsInfo rsInfo) {
         this.rsInfo = rsInfo;
     }
-    
+
     public Service getService() {
         return service;
     }
-    
+
     public void setService(Service service) {
         this.service = service;
     }
-    
+
     @Override
     public void run() {
         Service service = this.service;
         if (Loggers.EVT_LOG.isDebugEnabled()) {
             Loggers.EVT_LOG.debug("[CLIENT-BEAT] processing beat: {}", rsInfo.toString());
         }
-        
+
         String ip = rsInfo.getIp();
         String clusterName = rsInfo.getCluster();
         int port = rsInfo.getPort();
+        // 获取集群信息
         Cluster cluster = service.getClusterMap().get(clusterName);
+        // 获取集群中的所有实例信息
         List<Instance> instances = cluster.allIPs(true);
-        
+
         for (Instance instance : instances) {
+            // 找到心跳的这个实例
             if (instance.getIp().equals(ip) && instance.getPort() == port) {
                 if (Loggers.EVT_LOG.isDebugEnabled()) {
                     Loggers.EVT_LOG.debug("[CLIENT-BEAT] refresh beat: {}", rsInfo.toString());
                 }
+                // 更新实例的最后一次心跳时间 lastBeat
                 instance.setLastBeat(System.currentTimeMillis());
                 if (!instance.isMarked()) {
                     if (!instance.isHealthy()) {
